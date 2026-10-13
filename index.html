@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#244a3d">
+<title>기억의 정원 · 짝맞추기</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#233e34;background:#f6f5ee;font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:3px solid #d18d32;outline-offset:4px}header{max-width:1080px;margin:auto;padding:26px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #dedfd3}.brand{font-weight:800;letter-spacing:-.5px}.tag{font-size:12px;letter-spacing:2px;color:#667d6b}main{max-width:960px;margin:auto;padding:38px 24px}h1{font-size:clamp(32px,5vw,48px);letter-spacing:-2px;margin:12px 0}p{line-height:1.7;color:#66776a;margin:0}.eyebrow{color:#6c8450;font-size:12px;letter-spacing:3px;font-weight:700}.intro{text-align:center}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:30px 0 18px;flex-wrap:wrap}.controls{display:flex;align-items:center;gap:10px}select,.secondary{border:1px solid #cfd6c7;border-radius:10px;background:#fffef9;padding:10px 13px;color:#244a3d}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}.stat{background:#eeefe5;border:1px solid #e1e4d7;border-radius:14px;padding:14px 18px}.stat span{display:block;font-size:12px;color:#6b7b69;margin-bottom:5px}.stat strong{font-size:24px;font-variant-numeric:tabular-nums}.board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:620px;margin:auto}.card{position:relative;aspect-ratio:1.15;border:0;border-radius:16px;background:#285441;box-shadow:0 4px 0 #1e4033;color:#dce7c7;transition:transform .18s,background .18s;font-size:36px}.card:hover:not(:disabled){transform:translateY(-3px);background:#34674f}.card .back{font-size:30px;opacity:.7}.card.open{background:#fffef9;color:#233e34;box-shadow:0 0 0 2px #bfcdb0;transform:rotateY(0)}.card.matched{background:#e0ead4;box-shadow:none}.card:disabled{cursor:default}.card.matched:after{content:"✓";position:absolute;right:9px;bottom:6px;font-size:14px;color:#477044}.note{text-align:center;font-size:13px;margin:24px 0 12px}.status{text-align:center;min-height:28px;color:#466640;font-weight:600}.best{text-align:center;font-size:13px;color:#6d7c69;margin-top:14px}.result{margin:24px auto 0;max-width:620px;padding:24px;text-align:center;background:#e4ecd8;border:1px solid #cad8b5;border-radius:18px}.result[hidden]{display:none}.result h2{margin:0 0 10px}.primary{background:#285441;border:0;color:white;border-radius:10px;padding:12px 24px;margin-top:14px}.footer{text-align:center;font-size:12px;color:#82907d;margin:35px 0 0}@media(min-width:700px){.board.hard{grid-template-columns:repeat(6,1fr);max-width:760px}}@media(max-width:480px){main{padding:26px 16px}.card{border-radius:12px;font-size:30px}.board{gap:9px}.tag{font-size:10px}.toolbar{justify-content:center}.stat{padding:12px}.stat strong{font-size:21px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="brand">✿ 기억의 정원</div><div class="tag">A LITTLE DAILY BRAIN BREAK</div></header>
+<main>
+<section class="intro"><div class="eyebrow">MEMORY GARDEN</div><h1>뒤집고, 기억하고, 짝을 찾아요.</h1><p>같은 그림 두 장을 찾아 작은 정원을 완성해 보세요.<br>서두르지 않아도 괜찮아요. 한 쌍씩 차근차근.</p></section>
+<div class="toolbar"><div class="controls"><label for="difficulty">난이도</label><select id="difficulty"><option value="easy">새싹 · 6쌍</option><option value="normal" selected>꽃잎 · 8쌍</option><option value="hard">정원 · 12쌍</option></select></div><button class="secondary" id="restart">↻ 새로 시작</button></div>
+<div class="stats"><div class="stat"><span>찾은 짝</span><strong id="pairs">0 / 8</strong></div><div class="stat"><span>시도 횟수</span><strong id="moves">0</strong></div><div class="stat"><span>플레이 시간</span><strong id="time">00:00</strong></div></div>
+<div class="board" id="board" role="group" aria-label="짝맞추기 카드"></div>
+<p class="note">카드 두 장을 선택하세요. 키보드 Tab과 Enter로도 플레이할 수 있어요.</p>
+<div class="status" id="status" role="status" aria-live="polite">첫 카드를 뒤집으면 시작해요.</div>
+<div class="best" id="best"></div>
+<section class="result" id="result" hidden aria-labelledby="result-title"><h2 id="result-title">정원을 모두 완성했어요! 🌷</h2><p id="summary"></p><button class="primary" id="again">한 번 더 도전하기</button></section>
+<div class="footer">하루 한 번, 즐거운 기억력 연습 · 기록은 이 브라우저에만 저장됩니다.</div>
+</main>
+<script>
+'use strict';
+const symbols=['🌷','🌻','🌿','🍀','🍄','🦋','🐝','🍓','🍋','🌸','🐞','🌵'];
+const counts={easy:6,normal:8,hard:12};
+const $=id=>document.getElementById(id);
+let deck=[],selected=[],matched=0,moves=0,started=null,ticker=null,pending=null,locked=false,seconds=0;
+const format=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+function readBest(){try{return JSON.parse(localStorage.getItem('memory-garden-'+$('difficulty').value))}catch{return null}}
+function showBest(){const b=readBest();$('best').textContent=b&&Number.isFinite(b.moves)&&Number.isFinite(b.seconds)?'나의 최고 기록 · '+b.moves+'회 · '+format(b.seconds):'나의 최고 기록 · 첫 기록을 만들어 보세요';}
+function updateTime(){seconds=started===null?0:Math.floor((Date.now()-started)/1000);$('time').textContent=format(seconds);}
+function renderCard(i){const card=$('board').children[i],item=deck[i],visible=item.matched||selected.includes(i);card.className='card'+(visible?' open':'')+(item.matched?' matched':'');card.textContent=visible?item.symbol:'✿';card.setAttribute('aria-label',(i+1)+'번 카드, '+(visible?item.symbol+(item.matched?', 짝 찾음':''):'뒤집힌 카드'));card.disabled=visible;}
+function reset(){
+clearInterval(ticker);clearTimeout(pending);ticker=null;pending=null;selected=[];matched=0;moves=0;started=null;seconds=0;locked=false;
+const n=counts[$('difficulty').value];
+deck=symbols.slice(0,n).flatMap(symbol=>[{symbol,matched:false},{symbol,matched:false}]);
+for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+$('board').replaceChildren();$('board').className='board'+($('difficulty').value==='hard'?' hard':'');
+deck.forEach((_,i)=>{const b=document.createElement('button');b.type='button';b.addEventListener('click',()=>flip(i));$('board').append(b);renderCard(i);});
+$('pairs').textContent='0 / '+n;$('moves').textContent='0';updateTime();$('result').hidden=true;$('status').textContent='첫 카드를 뒤집으면 시작해요.';showBest();
+}
+function flip(i){
+if(locked||deck[i].matched||selected.includes(i))return;
+if(started===null){started=Date.now();ticker=setInterval(updateTime,250);}
+selected.push(i);renderCard(i);
+if(selected.length===1){$('status').textContent='같은 그림의 카드를 찾아보세요.';return;}
+moves++;$('moves').textContent=moves;
+const [a,b]=selected;
+if(deck[a].symbol===deck[b].symbol){
+deck[a].matched=deck[b].matched=true;selected=[];matched++;renderCard(a);renderCard(b);$('pairs').textContent=matched+' / '+counts[$('difficulty').value];$('status').textContent='한 쌍을 찾았어요!';
+if(matched===counts[$('difficulty').value])finish();
+}else{
+locked=true;$('status').textContent='위치를 기억해 두세요. 다시 도전해요.';
+pending=setTimeout(()=>{selected=[];renderCard(a);renderCard(b);locked=false;pending=null;},850);
+}}
+function finish(){
+updateTime();clearInterval(ticker);locked=true;
+const b=readBest();const valid=b&&Number.isFinite(b.moves)&&Number.isFinite(b.seconds);
+const improved=!valid||moves<b.moves||(moves===b.moves&&seconds<b.seconds);
+if(improved){try{localStorage.setItem('memory-garden-'+$('difficulty').value,JSON.stringify({moves,seconds}));}catch{}}
+$('status').textContent='모든 짝을 찾았어요. 멋진 집중력이에요!';
+$('summary').textContent=moves+'번의 시도, '+format(seconds)+' 만에 완성했어요.'+(improved?' 새로운 최고 기록이에요!':'');
+$('result').hidden=false;showBest();
+}
+$('restart').addEventListener('click',reset);$('again').addEventListener('click',()=>{reset();$('board').children[0].focus();});$('difficulty').addEventListener('change',reset);reset();
+</script>
+</body></html>
